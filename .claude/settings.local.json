@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python3 manage.py startapp:*)",
+      "Bash(py manage.py check)",
+      "Bash(py manage.py makemigrations:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(del \"C:\\\\Users\\\\sabir\\\\gnews_api\\\\articles\\\\migrations\\\\0001_initial.py\")",
+      "Bash(where:*)",
+      "Bash(py -m pip install:*)",
+      "Bash(py manage.py migrate)",
+      "Bash(sc query:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
