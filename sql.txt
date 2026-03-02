@@ -1,42 +1,54 @@
--- 1. Table users (doit exister en premier)
+-- 1. Table users (Django AbstractUser + custom user_type)
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'editor', 'validator', 'author') DEFAULT 'author',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    password VARCHAR(128) NOT NULL,
+    last_login DATETIME NULL,
+    is_superuser BOOLEAN DEFAULT FALSE NOT NULL,
+    username VARCHAR(150) UNIQUE NOT NULL,
+    first_name VARCHAR(150) NOT NULL DEFAULT '',
+    last_name VARCHAR(150) NOT NULL DEFAULT '',
+    email VARCHAR(254) NOT NULL DEFAULT '',
+    is_staff BOOLEAN DEFAULT FALSE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    date_joined DATETIME NOT NULL,
+    user_type VARCHAR(20) NOT NULL DEFAULT 'viewer'
+    -- user_type choices: 'admin', 'editor', 'viewer'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Django auth M2M junction tables (auto-managed by Django)
+-- users_groups: maps users to auth_group
+-- users_user_permissions: maps users to auth_permission
 
 -- 2. Table sources
 CREATE TABLE IF NOT EXISTS sources (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    type ENUM('rss', 'api', 'scraper') NOT NULL,
-    url TEXT NOT NULL,
+    type VARCHAR(10) NOT NULL,
+    -- type choices: 'rss', 'api', 'scraper'
+    url LONGTEXT NOT NULL,
     fetch_interval INT UNSIGNED DEFAULT 30,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Table raw_news
 CREATE TABLE IF NOT EXISTS raw_news (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    source_id BIGINT UNSIGNED,
-    title TEXT,
-    url TEXT,
-    content TEXT,
-    status ENUM('nouveau', 'traite', 'ignore') DEFAULT 'nouveau',
-    raw_data JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+    source_id BIGINT UNSIGNED NULL,
+    title LONGTEXT NULL,
+    url LONGTEXT NULL,
+    content LONGTEXT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'nouveau',
+    -- status choices: 'nouveau', 'traite', 'ignore'
+    raw_data JSON NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
     INDEX idx_source_id (source_id),
     INDEX idx_status (status),
-    
-    CONSTRAINT fk_raw_news_source 
+
+    CONSTRAINT fk_raw_news_source
         FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -46,12 +58,12 @@ CREATE TABLE IF NOT EXISTS categories (
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     parent_id BIGINT UNSIGNED NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
     INDEX idx_parent_id (parent_id),
-    
-    CONSTRAINT fk_category_parent 
+
+    CONSTRAINT fk_category_parent
         FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -60,126 +72,114 @@ CREATE TABLE IF NOT EXISTS tags (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
-    type ENUM('game', 'platform', 'genre', 'general') DEFAULT 'general',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    type VARCHAR(10) NOT NULL DEFAULT 'general',
+    -- type choices: 'game', 'platform', 'genre', 'general'
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Table media
+-- 6. Table media (no uploaded_by — not in model)
 CREATE TABLE IF NOT EXISTS media (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    url TEXT NOT NULL,
-    alt_text VARCHAR(500),
-    caption TEXT,
-    credit VARCHAR(255),
-    uploaded_by BIGINT UNSIGNED,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_uploaded_by (uploaded_by),
-    
-    CONSTRAINT fk_media_uploader 
-        FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    url LONGTEXT NOT NULL,
+    alt_text VARCHAR(500) NULL,
+    caption LONGTEXT NULL,
+    credit VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Table articles (ENFIN!)
-CREATE TABLE articles (
+-- 7. Table articles
+CREATE TABLE IF NOT EXISTS articles (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    
-    -- Foreign Keys
+
+    -- Foreign Keys (no author_id or validated_by — not in model)
     source_id BIGINT UNSIGNED NULL,
     raw_news_id BIGINT UNSIGNED NULL,
-    author_id BIGINT UNSIGNED NULL,
     category_id BIGINT UNSIGNED NULL,
-    validated_by BIGINT UNSIGNED NULL,
-    
+
     -- Content Fields
     title VARCHAR(500) NOT NULL,
     slug VARCHAR(500) UNIQUE NOT NULL,
-    content TEXT NOT NULL,
-    
+    content LONGTEXT NOT NULL,
+
     -- SEO Fields
-    meta_title VARCHAR(255),
-    meta_description TEXT,
-    
-    -- Media
-    featured_image VARCHAR(500),
-    
+    meta_title VARCHAR(255) NULL,
+    meta_description LONGTEXT NULL,
+
+    -- Media (ImageField stores file path, max_length=100)
+    featured_image VARCHAR(100) NULL,
+
     -- Status Management
-    status ENUM('nouveau', 'brouillon_ia', 'en_revision', 'publie', 'archive') NOT NULL DEFAULT 'nouveau',
-    
+    status VARCHAR(20) NOT NULL DEFAULT 'nouveau',
+    -- status choices: 'nouveau', 'brouillon_ia', 'en_revision', 'publie', 'archive'
+
     -- Flags
-    is_featured BOOLEAN DEFAULT FALSE,
-    is_breaking BOOLEAN DEFAULT FALSE,
-    
+    is_featured BOOLEAN DEFAULT FALSE NOT NULL,
+    is_breaking BOOLEAN DEFAULT FALSE NOT NULL,
+
     -- Analytics
-    view_count BIGINT UNSIGNED DEFAULT 0,
-    
+    view_count BIGINT UNSIGNED DEFAULT 0 NOT NULL,
+
     -- Editorial Notes
-    validation_notes TEXT,
-    
+    validation_notes LONGTEXT NULL,
+
     -- Timestamps
-    published_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+    published_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
     -- Indexes
     INDEX idx_source_id (source_id),
     INDEX idx_raw_news_id (raw_news_id),
-    INDEX idx_author_id (author_id),
     INDEX idx_category_id (category_id),
-    INDEX idx_validated_by (validated_by),
     INDEX idx_status (status),
     INDEX idx_published_at (published_at),
     INDEX idx_is_featured (is_featured),
     INDEX idx_is_breaking (is_breaking),
     INDEX idx_slug (slug),
-    
+
     -- Foreign Key Constraints
-    CONSTRAINT fk_article_source 
+    CONSTRAINT fk_article_source
         FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL,
-    CONSTRAINT fk_article_raw_news 
+    CONSTRAINT fk_article_raw_news
         FOREIGN KEY (raw_news_id) REFERENCES raw_news(id) ON DELETE SET NULL,
-    CONSTRAINT fk_article_author 
-        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_article_category 
-        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
-    CONSTRAINT fk_article_validator 
-        FOREIGN KEY (validated_by) REFERENCES users(id) ON DELETE SET NULL
+    CONSTRAINT fk_article_category
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Tables de liaison
-CREATE TABLE article_media (
+-- 8. Junction tables
+CREATE TABLE IF NOT EXISTS article_media (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     article_id BIGINT UNSIGNED NOT NULL,
     media_id BIGINT UNSIGNED NOT NULL,
-    order_position INT UNSIGNED DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+    order_position INT UNSIGNED DEFAULT 0 NOT NULL,
+    created_at DATETIME NOT NULL,
+
     INDEX idx_article_id (article_id),
     INDEX idx_media_id (media_id),
-    
-    CONSTRAINT fk_article_media_article 
+
+    CONSTRAINT fk_article_media_article
         FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
-    CONSTRAINT fk_article_media_media 
+    CONSTRAINT fk_article_media_media
         FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
-        
+
     UNIQUE KEY unique_article_media (article_id, media_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE article_tags (
+CREATE TABLE IF NOT EXISTS article_tags (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     article_id BIGINT UNSIGNED NOT NULL,
     tag_id BIGINT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+    created_at DATETIME NOT NULL,
+
     INDEX idx_article_id (article_id),
     INDEX idx_tag_id (tag_id),
-    
-    CONSTRAINT fk_article_tags_article 
+
+    CONSTRAINT fk_article_tags_article
         FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
-    CONSTRAINT fk_article_tags_tag 
+    CONSTRAINT fk_article_tags_tag
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
-        
+
     UNIQUE KEY unique_article_tag (article_id, tag_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -16,7 +16,10 @@
       "Bash(sc query:*)",
       "Bash(npm run build:*)",
       "Bash(npm create:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(python manage.py:*)"
     ]
   }
 }

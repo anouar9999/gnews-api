@@ -81,6 +81,7 @@ class ArticleCreateUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    featured_image = serializers.ImageField(required=False, allow_null=True, allow_empty_file=True)
 
     class Meta:
         model = Article
