@@ -1,10 +1,14 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 
-from .models import Article, Category, Tag, Source, Media, RawNews
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
@@ -14,6 +18,7 @@ from .serializers import (
     SourceSerializer,
     MediaSerializer,
     RawNewsSerializer,
+    NewsletterSubscriberSerializer,
 )
 
 
@@ -40,7 +45,32 @@ class ArticleViewSet(viewsets.ModelViewSet):
         article.status = 'publie'
         article.published_at = timezone.now()
         article.save()
+        self._notify_subscribers(article)
         return Response({'status': 'published'})
+
+    def _notify_subscribers(self, article):
+        try:
+            subscribers = list(
+                NewsletterSubscriber.objects.filter(is_active=True).values_list('email', flat=True)
+            )
+            if not subscribers:
+                return
+            frontend_url = getattr(django_settings, 'FRONTEND_URL', 'http://localhost:5173')
+            excerpt = (article.content or '')[:200]
+            send_mail(
+                subject=f'[GNEWZ] {article.title}',
+                message=(
+                    f'{article.title}\n\n'
+                    f'{excerpt}...\n\n'
+                    f'Read more: {frontend_url}\n\n'
+                    f'---\nUnsubscribe: {frontend_url}'
+                ),
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=subscribers,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
 
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
@@ -126,3 +156,18 @@ class MediaViewSet(viewsets.ModelViewSet):
     search_fields = ['alt_text', 'caption', 'credit']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+
+class NewsletterSubscribeView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip()
+        if not email:
+            return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        subscriber, created = NewsletterSubscriber.objects.get_or_create(email=email)
+        if not created and subscriber.is_active:
+            return Response({'message': 'Already subscribed.'}, status=status.HTTP_200_OK)
+        subscriber.is_active = True
+        subscriber.save()
+        return Response({'message': 'Subscribed successfully.'}, status=status.HTTP_201_CREATED)

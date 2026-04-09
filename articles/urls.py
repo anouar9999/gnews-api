@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ArticleViewSet, CategoryViewSet, TagViewSet, SourceViewSet, MediaViewSet, RawNewsViewSet
+from .views import ArticleViewSet, CategoryViewSet, TagViewSet, SourceViewSet, MediaViewSet, RawNewsViewSet, NewsletterSubscribeView
 
 router = DefaultRouter()
 router.register(r'articles', ArticleViewSet, basename='article')
@@ -12,4 +12,5 @@ router.register(r'raw-news', RawNewsViewSet, basename='raw-news')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('newsletter/subscribe/', NewsletterSubscribeView.as_view(), name='newsletter-subscribe'),
 ]

@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Article, Category, Tag, Source, Media, RawNews
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber
+
+
+class NewsletterSubscriberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsletterSubscriber
+        fields = ['email']
 
 
 class CategorySerializer(serializers.ModelSerializer):

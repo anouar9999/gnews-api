@@ -178,3 +178,15 @@ class ArticleTag(models.Model):
     class Meta:
         db_table = 'article_tags'
         unique_together = ('article', 'tag')
+
+
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'newsletter_subscribers'
+
+    def __str__(self):
+        return self.email
