@@ -1,4 +1,4 @@
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters, status, mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -10,7 +10,7 @@ from django.conf import settings as django_settings
 from django.db.models import Count, Sum, Avg, Q
 from django.db.models.functions import TruncDay, TruncMonth
 
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
@@ -23,6 +23,8 @@ from .serializers import (
     NewsletterSubscriberSerializer,
     CommentSerializer,
     CommentCreateSerializer,
+    SitePageSerializer,
+    SiteSettingsSerializer,
 )
 
 
@@ -703,6 +705,50 @@ class UserStatsView(APIView):
             'by_type': by_type,
             'registrations_by_month': by_month,
         })
+
+
+# ---------------------------------------------------------------------------
+# Site Settings API  (singleton — GET / PATCH /api/settings/)
+# ---------------------------------------------------------------------------
+
+class SiteSettingsView(APIView):
+    """
+    GET   /api/settings/  — retrieve current settings (admin only)
+    PATCH /api/settings/  — update settings (admin only)
+    """
+
+    def get(self, request):
+        settings = SiteSettings.load()
+        return Response(SiteSettingsSerializer(settings).data)
+
+    def patch(self, request):
+        if not request.user.is_authenticated or request.user.user_type not in ('admin', 'editor'):
+            return Response({'error': 'Admin or editor access required.'}, status=status.HTTP_403_FORBIDDEN)
+        settings = SiteSettings.load()
+        serializer = SiteSettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+# ---------------------------------------------------------------------------
+# Site Pages API
+# ---------------------------------------------------------------------------
+
+class SitePageViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    GET  /api/pages/         — list all pages (public)
+    GET  /api/pages/{slug}/  — retrieve page content (public)
+    PATCH /api/pages/{slug}/ — update page content (admin/editor only)
+    """
+    queryset = SitePage.objects.all()
+    serializer_class = SitePageSerializer
+    lookup_field = 'slug'
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
 
 
 class NewsletterSubscriberSerializer(serializers.ModelSerializer):
@@ -129,6 +129,20 @@ class ArticleCreateUpdateSerializer(serializers.ModelSerializer):
             instance.media.set(media_ids)
 
         return instance
+
+
+class SiteSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SiteSettings
+        fields = ['general', 'content_cfg', 'updated_at']
+        read_only_fields = ['updated_at']
+
+
+class SitePageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SitePage
+        fields = ['slug', 'content', 'updated_at']
+        read_only_fields = ['updated_at']
 
 
 class CommentReplySerializer(serializers.ModelSerializer):

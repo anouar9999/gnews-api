@@ -193,6 +193,41 @@ class NewsletterSubscriber(models.Model):
         return self.email
 
 
+class SiteSettings(models.Model):
+    """Singleton model for platform-wide configuration."""
+    general = models.JSONField(default=dict)
+    content_cfg = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'site_settings'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'Site Settings'
+
+
+class SitePage(models.Model):
+    """Stores editable content for static public pages."""
+    slug = models.CharField(max_length=50, unique=True)
+    content = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'site_pages'
+
+    def __str__(self):
+        return self.slug
+
+
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(
