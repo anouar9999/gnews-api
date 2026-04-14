@@ -1,4 +1,6 @@
 Django>=5.2.8,<6.0
+django-anymail[brevo]>=10.0
+python-dotenv>=1.0
 mysqlclient>=2.2.0
 djangorestframework>=3.14.0
 django-filter>=23.5

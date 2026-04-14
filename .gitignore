@@ -24,7 +24,8 @@ dist/
 build/
 *.egg-info/
 *.egg
-
+frontend - Copy (2)/
+frontend - Copy/
 # IDE
 .vscode/
 .idea/

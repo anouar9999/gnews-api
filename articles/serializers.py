@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment
 
 
 class NewsletterSubscriberSerializer(serializers.ModelSerializer):
@@ -50,7 +50,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'featured_image', 'status',
+            'id', 'title', 'slug', 'meta_description', 'featured_image', 'status',
             'is_featured', 'is_breaking', 'view_count',
             'category', 'tags',
             'published_at', 'created_at', 'updated_at'
@@ -129,3 +129,52 @@ class ArticleCreateUpdateSerializer(serializers.ModelSerializer):
             instance.media.set(media_ids)
 
         return instance
+
+
+class CommentReplySerializer(serializers.ModelSerializer):
+    """Shallow serializer for replies (no further nesting)."""
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'author_name', 'author_email', 'content', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_author_name(self, obj):
+        if obj.author:
+            return obj.author.get_full_name() or obj.author.username
+        return obj.author_name or 'Anonymous'
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Top-level comment with nested replies."""
+    replies = CommentReplySerializer(many=True, read_only=True)
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = [
+            'id', 'article', 'parent',
+            'author_name', 'author_email',
+            'content', 'replies',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'article', 'created_at', 'updated_at']
+
+    def get_author_name(self, obj):
+        if obj.author:
+            return obj.author.get_full_name() or obj.author.username
+        return obj.author_name or 'Anonymous'
+
+
+class CommentCreateSerializer(serializers.ModelSerializer):
+    """Used for POST — clients supply content, optional name/email/parent."""
+
+    class Meta:
+        model = Comment
+        fields = ['parent', 'author_name', 'author_email', 'content']
+
+    def validate_parent(self, value):
+        if value and value.parent is not None:
+            raise serializers.ValidationError('Replies cannot be nested more than one level.')
+        return value

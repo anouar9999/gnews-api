@@ -10,8 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -146,7 +150,10 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
-# Email (console for dev — swap for SMTP in production)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@gnewz.com'
-FRONTEND_URL = 'http://localhost:5173'
+# Email — Brevo via django-anymail (API key)
+ANYMAIL = {
+    "BREVO_API_KEY": os.environ.get("BREVO_SMTP_KEY", ""),
+}
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@gnewz.com")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")

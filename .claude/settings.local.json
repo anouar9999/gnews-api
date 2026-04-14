@@ -19,7 +19,9 @@
       "Bash(npm install:*)",
       "Bash(netstat:*)",
       "Bash(tasklist:*)",
-      "Bash(python manage.py:*)"
+      "Bash(python manage.py:*)",
+      "Bash(py --version)",
+      "Bash(python3 -m pip install \"django-anymail[brevo]>=10.0\")"
     ]
   }
 }
