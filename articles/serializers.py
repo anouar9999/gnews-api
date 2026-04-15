@@ -50,7 +50,8 @@ class ArticleListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Article
         fields = [
-            'id', 'title', 'slug', 'meta_description', 'featured_image', 'status',
+            'id', 'title', 'slug', 'meta_description',
+            'featured_image', 'featured_image_b64', 'status',
             'is_featured', 'is_breaking', 'view_count',
             'category', 'tags',
             'published_at', 'created_at', 'updated_at'
@@ -67,7 +68,8 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
         model = Article
         fields = [
             'id', 'title', 'slug', 'content',
-            'meta_title', 'meta_description', 'featured_image',
+            'meta_title', 'meta_description',
+            'featured_image', 'featured_image_b64',
             'status', 'is_featured', 'is_breaking', 'view_count',
             'validation_notes',
             'source', 'raw_news', 'category',
@@ -93,7 +95,8 @@ class ArticleCreateUpdateSerializer(serializers.ModelSerializer):
         model = Article
         fields = [
             'id', 'title', 'slug', 'content',
-            'meta_title', 'meta_description', 'featured_image',
+            'meta_title', 'meta_description',
+            'featured_image', 'featured_image_b64',
             'status', 'is_featured', 'is_breaking',
             'validation_notes',
             'source', 'raw_news', 'category',

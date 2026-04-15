@@ -222,6 +222,7 @@ class NewsletterSubscribeView(APIView):
             return Response({'message': 'Already subscribed.'}, status=status.HTTP_200_OK)
         subscriber.is_active = True
         subscriber.save()
+
         return Response({'message': 'Subscribed successfully.'}, status=status.HTTP_201_CREATED)
 
 

@@ -129,6 +129,7 @@ class Article(models.Model):
     meta_description = models.TextField(blank=True, null=True)
 
     featured_image = models.ImageField(upload_to='articles/featured/', blank=True, null=True)
+    featured_image_b64 = models.TextField(blank=True, null=True, default='')
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='nouveau')
 
