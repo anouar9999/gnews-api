@@ -10,8 +10,9 @@ from django.conf import settings as django_settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Sum, Avg, Q
 from django.db.models.functions import TruncDay, TruncMonth
+from django.shortcuts import get_object_or_404
 
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings, Game
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
@@ -26,6 +27,7 @@ from .serializers import (
     CommentCreateSerializer,
     SitePageSerializer,
     SiteSettingsSerializer,
+    GameSerializer,
 )
 
 
@@ -38,6 +40,17 @@ class ArticleViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'content', 'meta_title', 'meta_description']
     ordering_fields = ['created_at', 'updated_at', 'published_at', 'view_count', 'title']
     ordering = ['-created_at']
+
+    def get_object(self):
+        """Support lookup by numeric pk OR slug."""
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup = self.kwargs.get(self.lookup_field)
+        if lookup is not None and not str(lookup).isdigit():
+            obj = get_object_or_404(queryset, slug=lookup)
+        else:
+            obj = get_object_or_404(queryset, pk=lookup)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -514,6 +527,49 @@ class SitePageViewSet(
     queryset = SitePage.objects.all()
     serializer_class = SitePageSerializer
     lookup_field = 'slug'
+
+
+# ---------------------------------------------------------------------------
+# Game API
+# ---------------------------------------------------------------------------
+
+class GameViewSet(viewsets.ModelViewSet):
+    """
+    GET  /api/games/              — list (public)
+    GET  /api/games/{slug}/       — retrieve by slug or pk (public)
+    POST /api/games/              — create (admin/editor)
+    PUT/PATCH /api/games/{slug}/  — update (admin/editor)
+    DELETE /api/games/{slug}/     — delete (admin)
+    """
+    serializer_class = GameSerializer
+    filter_backends  = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['game_type', 'is_active', 'categories__slug']
+    search_fields    = ['title', 'short_description']
+    ordering_fields  = ['rank', 'title', 'created_at']
+    ordering         = ['rank', 'title']
+
+    def get_queryset(self):
+        qs = Game.objects.prefetch_related('categories')
+        # Admins/editors see all; public only sees active
+        user = self.request.user
+        is_staff = user.is_authenticated and getattr(user, 'user_type', '') in ('admin', 'editor')
+        if not is_staff:
+            qs = qs.filter(is_active=True)
+        # Handle game_type filter: 'popular' or 'anticipated' should also include 'both'
+        game_type = self.request.query_params.get('game_type')
+        if game_type in ('popular', 'anticipated'):
+            qs = qs.filter(Q(game_type=game_type) | Q(game_type='both'))
+        return qs
+
+    def get_object(self):
+        queryset = self.filter_queryset(Game.objects.prefetch_related('categories'))
+        lookup = self.kwargs.get(self.lookup_field)
+        if lookup and not str(lookup).isdigit():
+            obj = get_object_or_404(queryset, slug=lookup)
+        else:
+            obj = get_object_or_404(queryset, pk=lookup)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 # ---------------------------------------------------------------------------

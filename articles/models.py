@@ -229,6 +229,44 @@ class SitePage(models.Model):
         return self.slug
 
 
+class Game(models.Model):
+    TYPE_CHOICES = [
+        ('popular',    'Popular'),
+        ('anticipated','Anticipated'),
+        ('both',       'Both'),
+    ]
+
+    title             = models.CharField(max_length=255)
+    slug              = models.SlugField(max_length=255, unique=True)
+    description       = models.TextField(blank=True, default='')
+    short_description = models.CharField(max_length=500, blank=True, default='')
+    image_url         = models.TextField(blank=True, default='')
+
+    categories = models.ManyToManyField(Category, blank=True, related_name='games')
+
+    release_display = models.CharField(max_length=100, blank=True, default='TBA')
+    players         = models.CharField(max_length=50,  blank=True, default='')
+    trend           = models.CharField(max_length=20,  blank=True, default='')
+    rank            = models.PositiveIntegerField(default=0)
+    game_type       = models.CharField(max_length=12, choices=TYPE_CHOICES, default='popular')
+    is_active       = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'games'
+        ordering = ['rank', 'title']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(

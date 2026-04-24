@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings, Game
 
 
 class NewsletterSubscriberSerializer(serializers.ModelSerializer):
@@ -195,3 +195,21 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         if value and value.parent is not None:
             raise serializers.ValidationError('Replies cannot be nested more than one level.')
         return value
+
+
+class GameSerializer(serializers.ModelSerializer):
+    categories = CategorySerializer(many=True, read_only=True)
+    category_ids = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Category.objects.all(),
+        source='categories', write_only=True, required=False
+    )
+
+    class Meta:
+        model = Game
+        fields = [
+            'id', 'title', 'slug', 'description', 'short_description',
+            'image_url', 'categories', 'category_ids',
+            'release_display', 'players', 'trend', 'rank',
+            'game_type', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
