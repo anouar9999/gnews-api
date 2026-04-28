@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings, LandingSection, LandingSectionArticle
 
 
 class NewsletterSubscriberSerializer(serializers.ModelSerializer):
@@ -146,6 +146,44 @@ class SitePageSerializer(serializers.ModelSerializer):
         model = SitePage
         fields = ['slug', 'content', 'updated_at']
         read_only_fields = ['updated_at']
+
+
+class LandingSectionArticleSerializer(serializers.ModelSerializer):
+    article = ArticleListSerializer(read_only=True)
+
+    class Meta:
+        model = LandingSectionArticle
+        fields = ['id', 'article', 'position']
+
+
+class LandingSectionSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True, allow_null=True)
+    articles      = LandingSectionArticleSerializer(source='section_articles', many=True, read_only=True)
+    article_ids   = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model  = LandingSection
+        fields = [
+            'id', 'key', 'label', 'category', 'category_name', 'category_slug',
+            'article_count', 'is_active',
+            'articles', 'article_ids',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'updated_at']
+
+    def update(self, instance, validated_data):
+        article_ids = validated_data.pop('article_ids', None)
+        instance = super().update(instance, validated_data)
+        if article_ids is not None:
+            LandingSectionArticle.objects.filter(section=instance).delete()
+            for i, aid in enumerate(article_ids):
+                LandingSectionArticle.objects.create(section=instance, article_id=aid, position=i)
+        return instance
 
 
 class CommentReplySerializer(serializers.ModelSerializer):

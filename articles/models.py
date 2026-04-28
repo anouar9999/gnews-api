@@ -229,6 +229,46 @@ class SitePage(models.Model):
         return self.slug
 
 
+class LandingSection(models.Model):
+    SECTION_CHOICES = [
+        ('hero',      'Hero Section'),
+        ('trending',  'Trending Now'),
+        ('latest',    'Latest Grid'),
+        ('game_news', 'Game News'),
+        ('hardware',  'Hardware'),
+        ('esports',   'Esports'),
+        ('culture',   'Culture'),
+        ('category',  'Category Section'),
+    ]
+
+    key           = models.CharField(max_length=50, choices=SECTION_CHOICES, unique=True)
+    label         = models.CharField(max_length=100)
+    category      = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='landing_sections')
+    article_count = models.PositiveIntegerField(default=6)
+    is_active     = models.BooleanField(default=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'landing_sections'
+
+    def __str__(self):
+        return self.label
+
+
+class LandingSectionArticle(models.Model):
+    section  = models.ForeignKey(LandingSection, on_delete=models.CASCADE, related_name='section_articles')
+    article  = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='landing_placements')
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table     = 'landing_section_articles'
+        unique_together = ('section', 'article')
+        ordering     = ['position']
+
+    def __str__(self):
+        return f'{self.section.label} — {self.article.title[:40]}'
+
+
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(

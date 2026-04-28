@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     # Local apps
     'articles',
     'accounts',
+    'games',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'

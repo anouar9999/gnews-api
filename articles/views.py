@@ -5,13 +5,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+from django.http import Http404
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings as django_settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Sum, Avg, Q
 from django.db.models.functions import TruncDay, TruncMonth
 
-from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings
+from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings, LandingSection
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
@@ -26,6 +27,7 @@ from .serializers import (
     CommentCreateSerializer,
     SitePageSerializer,
     SiteSettingsSerializer,
+    LandingSectionSerializer,
 )
 
 
@@ -34,10 +36,32 @@ class ArticleViewSet(viewsets.ModelViewSet):
         'category', 'source'
     ).prefetch_related('tags', 'media')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'is_featured', 'is_breaking', 'category', 'category__slug']
+    filterset_fields = {
+        'status':         ['exact'],
+        'is_featured':    ['exact'],
+        'is_breaking':    ['exact'],
+        'category':       ['exact'],
+        'category__slug': ['exact'],
+        'published_at':   ['gte', 'lte'],
+    }
     search_fields = ['title', 'content', 'meta_title', 'meta_description']
     ordering_fields = ['created_at', 'updated_at', 'published_at', 'view_count', 'title']
     ordering = ['-created_at']
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup = self.kwargs.get(self.lookup_field)
+        try:
+            obj = queryset.get(pk=int(lookup))
+        except (ValueError, TypeError):
+            try:
+                obj = queryset.get(slug=lookup)
+            except Article.DoesNotExist:
+                raise Http404
+        except Article.DoesNotExist:
+            raise Http404
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -587,3 +611,37 @@ class ArticleCommentDetailView(APIView):
 
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Landing Section ──────────────────────────────────────────────────────────
+
+SECTION_DEFAULTS = [
+    {'key': 'hero',      'label': 'Hero Section',       'article_count': 5},
+    {'key': 'trending',  'label': 'Trending Now',        'article_count': 6},
+    {'key': 'latest',    'label': 'Latest Grid',         'article_count': 8},
+    {'key': 'game_news', 'label': 'Game News',           'article_count': 6},
+    {'key': 'hardware',  'label': 'Hardware',            'article_count': 6},
+    {'key': 'esports',   'label': 'Esports',             'article_count': 6},
+    {'key': 'culture',   'label': 'Culture',             'article_count': 9},
+    {'key': 'category',  'label': 'Category Section',    'article_count': 4},
+]
+
+
+class LandingSectionViewSet(viewsets.ModelViewSet):
+    queryset = LandingSection.objects.select_related('category').prefetch_related(
+        'section_articles__article__category',
+        'section_articles__article__tags',
+    ).order_by('id')
+    serializer_class = LandingSectionSerializer
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def list(self, request, *args, **kwargs):
+        # Auto-create defaults if the table is empty so the page always renders.
+        if not LandingSection.objects.exists():
+            for d in SECTION_DEFAULTS:
+                LandingSection.objects.get_or_create(key=d['key'], defaults=d)
+        return super().list(request, *args, **kwargs)

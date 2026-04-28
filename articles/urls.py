@@ -6,7 +6,7 @@ from .views import (
     GlobalStatsView, ArticleStatsView, SourceStatsView, RawNewsStatsView,
     CategoryStatsView, TagStatsView, NewsletterStatsView, UserStatsView,
     ArticleCommentListCreateView, ArticleCommentDetailView,
-    SitePageViewSet, SiteSettingsView,
+    SitePageViewSet, SiteSettingsView, LandingSectionViewSet,
 )
 
 router = DefaultRouter()
@@ -17,6 +17,7 @@ router.register(r'sources', SourceViewSet, basename='source')
 router.register(r'media', MediaViewSet, basename='media')
 router.register(r'raw-news', RawNewsViewSet, basename='raw-news')
 router.register(r'pages', SitePageViewSet, basename='site-page')
+router.register(r'landing-sections', LandingSectionViewSet, basename='landing-section')
 
 urlpatterns = [
     path('', include(router.urls)),
