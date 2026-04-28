@@ -269,6 +269,7 @@ class LandingSectionArticle(models.Model):
         return f'{self.section.label} — {self.article.title[:40]}'
 
 
+
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(

@@ -233,3 +233,5 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         if value and value.parent is not None:
             raise serializers.ValidationError('Replies cannot be nested more than one level.')
         return value
+
+

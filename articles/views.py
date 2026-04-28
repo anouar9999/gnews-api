@@ -11,6 +11,7 @@ from django.conf import settings as django_settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Sum, Avg, Q
 from django.db.models.functions import TruncDay, TruncMonth
+from django.shortcuts import get_object_or_404
 
 from .models import Article, Category, Tag, Source, Media, RawNews, NewsletterSubscriber, Comment, SitePage, SiteSettings, LandingSection
 from .serializers import (
